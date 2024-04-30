@@ -1,9 +1,14 @@
 package io.siloonk.github.protocol;
 
+import net.kyori.adventure.nbt.BinaryTagIO;
+import net.kyori.adventure.nbt.CompoundBinaryTag;
+
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 public class PacketWriter {
 
@@ -67,5 +72,22 @@ public class PacketWriter {
 
     public void writePosition(int x, int y, int z) throws IOException {
         out.writeLong(((long) (x & 0x3FFFFFF) << 38) | ((long) (z & 0x3FFFFFF) << 12) | (y & 0xFFF));
+    }
+
+    public void writeUUID(UUID uuid) throws IOException {
+        out.writeLong(uuid.getMostSignificantBits());
+        out.writeLong(uuid.getLeastSignificantBits());
+    }
+
+    public void writeNBTCompound(CompoundBinaryTag compound) throws IOException {
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        BinaryTagIO.writer().writeNameless(compound, stream);
+        out.write(stream.toByteArray());
+    }
+
+    public void writeUnsignedByte(int value) throws IOException {
+        if (value > -1 && value < 256) {
+            out.write(value);
+        }
     }
 }

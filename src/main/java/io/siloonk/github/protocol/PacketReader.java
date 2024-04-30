@@ -5,6 +5,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 public class PacketReader {
 
@@ -114,5 +115,15 @@ public class PacketReader {
         long y = val << 52 >> 52;
         long z = val << 26 >> 38;
         return new Location((int) x, (int) y, (int) z);
+    }
+
+    public UUID readUUID() throws IOException {
+        long mostSig = readLong();
+        long leastSig = readLong();
+        return new UUID(mostSig, leastSig);
+    }
+
+    public boolean readBool() throws IOException {
+        return in.readBoolean();
     }
 }

@@ -6,14 +6,18 @@ import io.siloonk.github.protocol.PacketReader;
 import io.siloonk.github.protocol.PacketWriter;
 import io.siloonk.github.protocol.packets.Packet;
 import io.siloonk.github.protocol.packets.PacketRegistry;
+import io.siloonk.github.protocol.packets.clientbound.configuration.ConfigurationClientBoundKeepAlive;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.SneakyThrows;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.Socket;
 import java.util.Arrays;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class ClientSession {
 
@@ -27,14 +31,24 @@ public class ClientSession {
     private PacketReader in;
     private PacketWriter out;
     private PacketHandler packetHandler;
+    @Getter
+    private MinecraftServer server;
 
-    public ClientSession(Socket socket) throws IOException {
+    @Getter
+    private long lastKeepAlive = -1;
+
+    @Setter
+    @Getter
+    private int protocolVersion = -1;
+
+    public ClientSession(Socket socket, MinecraftServer server) throws IOException {
         this.socket = socket;
         this.state = GameState.HANDSHAKE;
 
         this.in = new PacketReader(socket.getInputStream());
         this.out = new PacketWriter(socket.getOutputStream());
         this.packetHandler = new PacketHandler(this);
+        this.server = server;
     }
 
     public void handle() {
@@ -59,6 +73,21 @@ public class ClientSession {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public void startConfigurationKeepAlive() {
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @SneakyThrows
+            @Override
+            public void run() {
+                if (state != GameState.CONFIGURATION) cancel();
+
+                long payload = System.currentTimeMillis();
+                lastKeepAlive = payload;
+                sendPacket(new ConfigurationClientBoundKeepAlive(payload));
+            }
+        }, 0, 15*1000);
     }
 
     public void sendPacket(Packet packet) throws IOException {
